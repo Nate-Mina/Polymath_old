@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { PolymathEvaluation, Question, UserAnswerRecord } from '../types/polymath';
 import { PolymathRadarChart } from './PolymathRadarChart';
 import { DomainMasteryGrid } from './DomainMasteryGrid';
+import { ShareResultsModal } from './ShareResultsModal';
+import { generateShareableResultsSnippet, copyToClipboard } from '../utils/shareResults';
 import {
   Award,
   CheckCircle2,
@@ -17,6 +19,7 @@ import {
   Scale,
   Compass,
   ArrowRight,
+  Check,
 } from 'lucide-react';
 
 interface PolymathReportViewProps {
@@ -40,6 +43,7 @@ export const PolymathReportView: React.FC<PolymathReportViewProps> = ({
   const [auditFilter, setAuditFilter] = useState<'all' | 'incorrect' | 'correct' | 'flagged'>('all');
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Filter audit questions
   const filteredAuditQuestions = questions.filter((q) => {
@@ -53,16 +57,14 @@ export const PolymathReportView: React.FC<PolymathReportViewProps> = ({
     return true;
   });
 
-  const handleCopySummary = () => {
-    const summary = `Polymath Aptitude Assessment:
-• Renaissance Quotient: ${evaluation.polymathQuotient}/100
-• Archetype: ${evaluation.archetype.title}
-• Overall Accuracy: ${evaluation.accuracyPercentage}% (${evaluation.correctCount}/${evaluation.totalQuestions})
-• STEM Accuracy: ${evaluation.technicalScore.percentage}% · Humanities Accuracy: ${evaluation.humanitiesScore.percentage}%`;
-
-    navigator.clipboard.writeText(summary);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
+  const handleCopySummary = async () => {
+    const snippet = generateShareableResultsSnippet(evaluation, 'detailed');
+    const success = await copyToClipboard(snippet);
+    if (success) {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    }
+    setIsShareModalOpen(true);
   };
 
   return (
@@ -193,10 +195,11 @@ export const PolymathReportView: React.FC<PolymathReportViewProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopySummary}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg text-slate-200 bg-slate-950 border border-slate-800 hover:border-slate-700 transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg text-slate-950 bg-gradient-to-r from-cyan-400 to-amber-400 hover:from-cyan-300 hover:to-amber-300 shadow-md shadow-cyan-950/40 transition-all cursor-pointer"
+              title="Copy formatted radar scores and evaluation summary to clipboard"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>{copiedLink ? 'Copied to Clipboard!' : 'Share Diagnostic Summary'}</span>
+              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+              <span>{copiedLink ? 'Results Copied to Clipboard!' : 'Share Results'}</span>
             </button>
 
             <button
@@ -488,6 +491,13 @@ export const PolymathReportView: React.FC<PolymathReportViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Share Results Modal */}
+      <ShareResultsModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        evaluation={evaluation}
+      />
     </div>
   );
 };
